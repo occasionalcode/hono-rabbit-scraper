@@ -7,9 +7,9 @@ compatibility_date = "2025-01-24"
 # [vars]
 # MY_VAR = "my-variable"
 
-# [[kv_namespaces]]
-# binding = "MY_KV_NAMESPACE"
-# id = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+[[kv_namespaces]]
+binding = "HONO_RABBIT_SCRAPER"
+id = "e32b87d201704d068fdd8822af15797f"
 
 # [[r2_buckets]]
 # binding = "MY_BUCKET"

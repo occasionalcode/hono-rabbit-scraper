@@ -3,7 +3,11 @@ import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { cors } from "hono/cors";
 
-const app = new Hono<{ Bindings: CloudflareBindings }>();
+type Bindings = {
+  HONO_RABBIT_SCRAPER: KVNamespace;
+};
+
+const app = new Hono<{ Bindings: Bindings }>();
 
 app.use(
   cors({
@@ -45,9 +49,26 @@ app.get(
       fetchURL = `${rabbitBaseURL}/${mediaId}`;
     }
 
-    const streamLinKURL = await (await fetch(fetchURL, reqOptions)).json();
+    const kvKey = `${mediaId}/${seasonNum}/${epNum}`;
 
-    return c.json(streamLinKURL as Record<string, any>);
+    const cached = await c.env.HONO_RABBIT_SCRAPER.get(kvKey);
+
+    if (!cached) {
+      try {
+        const streamLinKURL = await (await fetch(fetchURL, reqOptions)).json();
+        c.env.HONO_RABBIT_SCRAPER.put(kvKey, JSON.stringify(streamLinKURL), {
+          expirationTtl: 1800,
+        });
+        return c.json(streamLinKURL as Record<string, any>);
+      } catch (error) {
+        return c.json(
+          { error: "an error occured while scraping this media." },
+          500
+        );
+      }
+    }
+
+    return c.json(JSON.parse(cached));
   }
 );
 
