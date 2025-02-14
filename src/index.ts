@@ -2,12 +2,19 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { cors } from "hono/cors";
+import { logger } from "hono/logger";
 
 type Bindings = {
   HONO_RABBIT_SCRAPER: KVNamespace;
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
+
+export const customLogger = (message: string, ...rest: string[]) => {
+  console.log(message, ...rest);
+};
+
+app.use(logger(customLogger));
 
 app.use(
   cors({
@@ -55,10 +62,16 @@ app.get(
 
     if (!cached) {
       try {
+        customLogger("CACHE MISS");
         const streamLinKURL = await (await fetch(fetchURL, reqOptions)).json();
-        c.env.HONO_RABBIT_SCRAPER.put(kvKey, JSON.stringify(streamLinKURL), {
-          expirationTtl: 1800,
-        });
+        await c.env.HONO_RABBIT_SCRAPER.put(
+          kvKey,
+          JSON.stringify(streamLinKURL),
+          {
+            expirationTtl: 1800,
+          }
+        );
+        customLogger("RESPONSE CACHED!");
         return c.json(streamLinKURL as Record<string, any>);
       } catch (error) {
         return c.json(
@@ -68,6 +81,7 @@ app.get(
       }
     }
 
+    customLogger("CACHE HIT");
     return c.json(JSON.parse(cached));
   }
 );
